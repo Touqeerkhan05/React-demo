@@ -16,22 +16,46 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '14'  # Ensure this matches your app requirements
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci  # Use npm ci for a clean install
 
       - name: Build the React app
-        run: npm run build
+        run: |
+          echo "Node.js version:"
+          node -v
+          echo "NPM version:"
+          npm -v
+          npm run build
+
+      - name: Archive production artifacts
+        run: |
+          mkdir build-artifacts
+          cp -r build/* build-artifacts/
+        shell: bash
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-artifacts
+          path: build-artifacts
 
       - name: 'Log in to Azure'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: Download build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: build-artifacts
+          path: build
+
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'testingreactjs'
+          package: '${{ github.workspace }}/build'
           slot-name: 'production'
-          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          timeout: 1800  # Increase timeout to 30 minutes
